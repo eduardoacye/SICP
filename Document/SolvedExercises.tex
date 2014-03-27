@@ -1,0 +1,543 @@
+\documentclass[letterpaper, leqno]{article}
+\usepackage[spanish]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage{concmath}
+\usepackage{commath}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsfonts}
+\usepackage{listings}
+\usepackage{color}
+\usepackage{textcomp}
+\usepackage{graphicx}
+\usepackage[margin=1.22in]{geometry}
+\usepackage{qtree}
+
+\lstset{
+  language=Scheme
+}
+
+\definecolor{answer}{rgb}{.05,.1,.35}
+
+\title{Solved Exercises for Structure and Interpretation of Computer Programs}
+\author{Eduardo Acuña Yeomans}
+\date{2014}
+
+\begin{document}
+
+\maketitle
+
+\section*{1. Building Abstractions with Procedures}
+
+\subsection*{Exercise 1.01}
+Below is a sequence of expressions. What is the result printed by the interpreter in response to each expression? Assume that the sequence is to be evaluated in the order in which it is presented.
+
+\lstinputlisting{scm/ch1/Exercise1.01.scm}
+
+\subsection*{Exercise 1.02}
+Translate the following expression into prefix form
+
+$$\frac{5+4+(2-(3-(6+ \frac{4}{5} )))}{3(6-2)(2-7)}$$
+
+\lstinputlisting{scm/ch1/Exercise1.02.scm}
+
+\subsection*{Exercise 1.03}
+Define a procedure that takes three numbers as arguments and returns the sum of the squares of the two larger numbers.
+
+\lstinputlisting{scm/ch1/Exercise1.03.scm}
+
+\subsection*{Exercise 1.04}
+Observe that our model of evaluation allows for combinations whose operators are compound expressions. Use this observation to describe the behavior of the following procedure:
+
+\lstinputlisting{scm/ch1/Exercise1.04.scm}
+
+
+\textcolor{answer}
+{
+  The operation we want to compute is $a + \abs{b}$. It doesnt alter the result if $b$ is negative or not, for this reason $a + \abs{b} = a + \abs{-b}$. The case when b is positive we can just sum the two numbers, the other case can be thought like $a + \abs{-b} = a + b = a - (-b)$, so we have to subtract $-b$ to $a$.
+}
+
+\subsection*{Exercise 1.05}
+Ben Bitdiddle has invented a test to determine whether the interpreter he is faced with is using applicative-order evaluation or normal-order evaluation. He defines the following two procedures:
+
+\lstinputlisting{scm/ch1/Exercise1.05a.scm}
+
+Then he evaluates the expression
+
+\lstinputlisting{scm/ch1/Exercise1.05b.scm}
+
+What behavior will Ben observe with an interpreter that uses applicative-order evaluation? What behavior will he observe with an interpreter that uses normal-order evaluation? Explain your answer. (Assume that the evaluation rule for the special form \texttt{if} is the same whether the interpreter is using normal or applicative order: The predicate expression is evaluated first, and the result determines whether to evaluate the consequent or the alternative expression.)
+
+\bigskip
+
+\textcolor{answer}{
+  In an applicative-order evaluator the arguments are evaluated first, therefor the evaluation of \texttt{(p)} in the procedure call \texttt{(test 0 (p))} will fall in an infinite loop of doom and the whole program will crash.
+}
+
+\textcolor{answer}{
+  In a normal-order evaluator the arguments are evaluated when they are needed; in the given snippet of code, \texttt{x} will be evaluated to \texttt{0} in the conditional of the \texttt{test} procedure, then \texttt{(= 0 0)} will evaluate to \texttt{\#t} and \texttt{0} will be the result. So \texttt{(p)} never gets evaluated.
+}
+
+\subsection*{Exercise 1.06}
+Alyssa P. Hacker doesn't see why \texttt{if} needs to be provided as a special form. ``Why can't I just define it as an ordinary procedure in terms of \texttt{cond}?'' she asks. Alyssa's friend Eva Lu Ator claims this can indeed be done, and she defines a new version of \texttt{if}:
+
+\begin{verbatim}
+(define (new-if predicate then-clause else-clause)
+  (cond (predicate then-clause)
+        (else else-clause)))
+\end{verbatim}
+
+Eva demonstrates the program for Alyssa:
+
+\begin{verbatim}
+1 ]=> (new-if (= 2 3) 0 5)
+
+;Value: 5
+
+1 ]=> (new-if (= 1 1) 0 5)
+
+;Value: 0
+\end{verbatim}
+
+Delighted, Alyssa uses \texttt{new-if} to rewrite the square-root program:
+
+\begin{verbatim}
+(define (sqrt-iter guess x)
+  (new-if (good-enough? guess x)
+          guess
+          (sqrt-iter (improve guess x)
+                     x)))
+\end{verbatim}
+
+What happens when Alyssa attempts to use this to compute square roots? Explain.
+
+\lstinputlisting{scm/ch1/Exercise1.06.scm}
+
+\textcolor{answer}{
+  Scheme uses applicative-order evaluation, this means that the evaluator is going to evaluate all the arguments of the function.
+}
+
+\textcolor{answer}{
+  In the \texttt{sqrt-iter} procedure, \texttt{new-if} takes three arguments:
+}
+
+{\color{answer}
+  \begin{itemize}
+  \item \texttt{(good-enough? guess x)}
+  \item \texttt{guess}
+  \item \texttt{(sqrt-iter (improve guess x) x)}
+  \end{itemize}
+}
+
+\textcolor{answer}{
+  There is no problem evaluating the first argument (that's what the evaluator does with the special form \texttt{if}) and the second argument (because is just a number). However, the third argument is a recursive call to the procedure that evaluated the \texttt{new-if} function; wich causes an infinite evaluation of the \texttt{new-if} function call inside the body of this procedure. That's why the \texttt{if} special form is neccessary for the \texttt{sqrt-iter} procedure to work as espected.
+}
+
+\textcolor{answer}{
+  \textbf{Note:} If the interpreter had a normal-order evaluator, the \texttt{new-if} procedure would work just fine.
+}
+
+\subsection*{Exercise 1.07}
+The \texttt{good-enough?} test used in computing square roots will not be very effective for finding the square roots of very small numbers. Also, in real computers, arithmetic operations are almost always performed with limited precision. This makes our test inadequate for very large numbers. Explain these statements, with examples showing how the test fails for small and large numbers. An alternative strategy for implementing \texttt{good-enough?} is to watch how \texttt{guess} changes from one iteration to the next and to stop when the change is a very small fraction of the guess. Design a square-root procedure that uses this kind of end test. Does this work better for small and large numbers?
+
+\bigskip
+
+\textcolor{answer}{
+  When we calculate the square of a very small number $n$ ($0 < n < 1$) the result will be smaller than $n$. So it is very likely that the \texttt{(abs (- (square guess) x))} will be smaller than \texttt{0.001}. Take for example the \texttt{(sqrt 0)} it will be approximated to \texttt{0.03125} when it should be 0. The \texttt{sqrt-mod} procedure get's it a little better, approximating $\sqrt{0}$ to \texttt{0.0009765625}.
+}
+
+\textcolor{answer}{
+  The other case is when we calculate square roots of very big numbers. The problem in this case is that when the procedure squares the guess it might result in a very very big number, big enough so that the computer can't represent it.
+}
+
+\bigskip
+
+\textcolor{answer}{
+  The following code gives the definitions of the square root approximation with two different criteria for \emph{what is good enough?}. Two more procedures are presented; one for measuring the error of a given square root procedure and a given number, the other for comparing how better or worst is one square root procedure to the other.
+}
+
+\bigskip
+
+\lstinputlisting{scm/ch1/Exercise1.07.scm}
+
+\subsection*{Exercise 1.08}
+Newton's method for cube roots is based on the fact that if $y$ is an approximation to the cube root of $x$, then a better approximation is given by the value
+
+$$\frac{x/y^2 + 2y}{3}$$
+
+Use this formula to implement a \texttt{cube-root} procedure analogous to the \texttt{square-root} procedure. (In section 1.3.4 we will see how to implement Newton's method in general as an abstraction of these \texttt{square-root} and \texttt{cube-root} procedures.) 
+
+%\textcolor{answer}{}
+\lstinputlisting{scm/ch1/Exercise1.08.scm}
+
+\subsection*{Exercise 1.09}
+Each of the following two procedures defines a method for adding two positive integers in terms of the procedures \texttt{inc}, which increments its argument by 1, and \texttt{dec}, which decrements its argument by 1.
+
+\lstinputlisting{scm/ch1/Exercise1.09.scm}
+
+Using the substitution model, illustrate the process generated by each procedure in evaluating \texttt{(+ 4 5)}. Are these processes iterative or recursive?
+
+\bigskip
+
+\textcolor{answer}{
+  The first recursive procedure describes a recursive process:
+}
+
+{\color{answer}
+\begin{verbatim}
+;(+ 4 5)
+;(inc (+ 3 5))
+;(inc (inc (+ 2 5) 5))
+;(inc (inc (inc (+ 1 5))))
+;(inc (inc (inc (inc (+ 0 5)))))
+;(inc (inc (inc (inc 5))))
+;(inc (inc (inc 6)))
+;(inc (inc 7))
+;(inc 8)
+;Value: 9
+\end{verbatim}
+}
+
+\textcolor{answer}{
+  The second recursive procedure describes an iterative process:
+}
+
+{\color{answer}
+\begin{verbatim}
+;(+ 4 5)
+;(+ (dec 4) (inc 5))
+;(+ 3 6)
+;(+ (dec 3) (inc 6))
+;(+ 2 7)
+;(+ (dec 2) (inc 7))
+;(+ 1 8)
+;(+ (dec 1) (inc 8))
+;(+ 0 9)
+;Value: 9
+\end{verbatim}
+}
+
+\subsection*{Exercise 1.10}
+The following procedure computes a mathematical function called Ackermann's function.
+
+\lstinputlisting{scm/ch1/Exercise1.10a.scm}
+
+What are the values of the following expressions?
+
+\lstinputlisting{scm/ch1/Exercise1.10b.scm}
+
+Consider the following procedures, where \texttt{A} is the procedure defined above:
+
+\lstinputlisting{scm/ch1/Exercise1.10c.scm}
+
+Give concise mathematical definitions for the functions computed by the procedures \texttt{f}, \texttt{g}, and \texttt{h} for positive integer values of \texttt{n}. For example, \texttt{(k n)} computes $5n^2$. 
+
+\textcolor{answer}{$$f(n) = 2n$$}
+\textcolor{answer}{$$g(n) = 2^n$$}
+\textcolor{answer}{$$i(n) = 2_1^{2_2^{...^{2_n}}}$$}
+\textcolor{answer}{$$k(n) = 5n^2$$}
+
+\subsection*{Exercise 1.11}
+ A function $f$ is defined by the rule that $f(n) = n$ if $n<3$ and $f(n) = f(n - 1) + 2f(n - 2) + 3f(n - 3)$ if $n \geq 3$. Write a procedure that computes $f$ by means of a recursive process. Write a procedure that computes $f$ by means of an iterative process.
+
+\lstinputlisting{scm/ch1/Exercise1.11.scm}
+
+\subsection*{Exercise 1.12}
+The following pattern of numbers is called Pascal's triangle.
+
+\begin{verbatim}
+                                      1
+                                    1   1
+                                  1   2   1
+                                1   3   3   1
+                              1   4   6   4   1
+                                    . . .
+\end{verbatim}
+
+The numbers at the edge of the triangle are all 1, and each number inside the triangle is the sum of the two numbers above it. Write a procedure that computes elements of Pascal's triangle by means of a recursive process. 
+
+\lstinputlisting{scm/ch1/Exercise1.12.scm}
+
+\subsection*{Exercise 1.13}
+Prove that $Fib(n)$ is the closest integer to $\phi^n/\sqrt{5}$, where $\phi = (1+\sqrt{5})/2$. Hint: Let $\psi = (1-\sqrt{5})/2$. Use induction and the definition of the Fibonacci numbers (see section 1.2.2) to prove that $Fib(n) = (\phi^n - \psi^n)/\sqrt{5}$. 
+
+
+{\color{answer}
+\begin{align*}
+Fib(1) =& ((1+\sqrt{5})/2 - (1-\sqrt{5})/2)/\sqrt{5} \\
+       =& ((1+\sqrt{5} - 1 + \sqrt{5})/2)/\sqrt{5} \\
+       =& (2\sqrt{5}/2)/\sqrt{5} \\
+       =& \sqrt{5}/\sqrt{5} \\
+       =& 1
+\end{align*}
+}
+
+\textcolor{answer}{
+We assume $Fib(n-1)$ and $Fib(n-2)$ satisfy the equation.
+}
+
+{\color{answer}
+\begin{align*}
+Fib(n) =& Fib(n-1) + Fib(n-2) \\
+=& \frac{\phi^{n-1}-\psi^{n-1}}{\sqrt{5}} + \frac{\phi^{n-2}-\psi^{n-2}}{\sqrt{5}} \\
+=& \frac{1}{\sqrt{5}}(\phi^{n-1}-\psi^{n-1}+\phi^{n-2}-\psi^{n-2}) \\
+=& \frac{1}{\sqrt{5}}(\phi^{n-1}+\phi^{n-2}-\psi^{n-1}-\psi^{n-2}) \\
+=& \frac{1}{\sqrt{5}}((1+\phi)\phi^{n-2}-(1+\psi)\psi^{n-2}) \\
+=& \frac{1}{\sqrt{5}}((\phi^2)\phi^{n-2}-(\psi^2)\psi^{n-2}) \\
+=& \frac{1}{\sqrt{5}}(\phi^n-\psi^n) \\
+=& \frac{\phi^n - \psi^n}{\sqrt{5}}
+\end{align*}
+}
+
+\subsection*{Exercise 1.14}
+Draw the tree illustrating the process generated by the count-change procedure of Section 1.2.2 in making change for 11 cents. What are the orders of growth of the space and number of steps used by this process as the amount to be changed increases?
+
+%\textcolor{answer}{}
+\lstinputlisting{scm/ch1/Exercise1.14a.scm}
+
+\lstinputlisting{scm/ch1/Exercise1.14b.scm}
+
+\begin{tiny}
+\Tree[.\texttt{(count-change 11)} 
+  [.\texttt{(cc 11 5)}
+    [.\texttt{+}
+      [.\texttt{(cc 11 4)} 
+        [.\texttt{+}
+          [.\texttt{(cc 11 3)}
+            [.\texttt{+} 
+              [.\texttt{(cc 11 2)}
+                [.\texttt{+}
+                  [.\texttt{(cc 11 1)}
+                    [.\texttt{+}
+                      [.$\dots$ 
+                        [.\texttt{+}
+                          [.\texttt{(cc 1 0)} 0 ]
+                          [.\texttt{(cc 0 1)} 1 ] ] ] ] ]
+                  [.\texttt{(cc 6 2)}
+                    [.\texttt{+}
+                      [.\texttt{(cc 6 1)}
+                        [.\texttt{+}
+                          [.$\dots$
+                            [.\texttt{+} 
+                              [.\texttt{(cc 1 0)} 0 ]
+                              [.\texttt{(cc 0 1)} 1 ] ] ] ] ]
+                      [.\texttt{(cc 1 2)}
+                        [.\texttt{+}
+                          [.\texttt{(cc 1 1)}
+                            [.\texttt{+}
+                              [.\texttt{(cc 1 0)} 0 ]
+                              [.\texttt{(cc 0 1)} 1 ] ] ]
+                          [.\texttt{(cc -4 2)} 0 ] ] ] ] ] ] ]
+              [.\texttt{(cc 1 3)}
+                [.\texttt{+}
+                  [.\texttt{(cc 1 2)} 
+                    [.\texttt{+} 
+                      [.\texttt{(cc 1 1)}
+                        [.\texttt{+}
+                          [.\texttt{(cc 1 0)} 0 ]
+                          [.\texttt{(cc 0 1)} 1 ] ] ]
+                      [.\texttt{(cc -4 2)} 0 ] ] ]
+                  [.\texttt{(cc -9 3)} 0 ] ] ] ] ]
+          [.\texttt{(cc -14 4)} 0 ] ] ]
+      [.\texttt{(cc -39 5)} 0 ] ] ] ]
+\end{tiny}
+
+\subsection*{Exercise 1.15}
+The sine of an angle (specified in radians) can be computed by making use of the approximation $\sin{x} \approx x$ if $x$ is sufficiently small, and the trigonometric identity
+
+$$\sin{x} = 3\sin{ \frac{x}{3}} - 4\sin^3{\frac{x}{3}}$$
+
+to reduce the size of the argument of sin. (For purposes of this exercise an angle is considered “sufficiently small” if its magnitude is not greater than 0.1 radians.) These ideas are incorporated in the following procedures:
+%\textcolor{answer}{}
+\lstinputlisting{scm/ch1/Exercise1.15a.scm}
+
+\begin{itemize}
+\item[a.] How many times is the procedure \texttt{p} applied when \texttt{(sine 12.15)} is evaluated?
+
+  \textcolor{answer}{The procedure \texttt{p} is calles each time the angle is reduced by a factor of 3 in the \texttt{sine} call until the absolute value of the angle is less or equall than 0.1.}
+
+\textcolor{answer}{  
+  \begin{itemize}
+    \item $12.15/3 = 4.05$ (first call)
+    \item $4.05/3 = 1.35$ (second call)
+    \item $1.35/3 = 0.45$ (third call)
+    \item $0.45/3 = 0.15$ (fourth call)
+    \item $0.15/3 = 0.05$ (fifth call)
+  \end{itemize}
+}
+
+\textcolor{answer}{
+The procedure is called 5 times.}
+
+\item[b.] What is the order of growth in space and number of steps (as a function of $a$) used by the process generated by the \texttt{sine} procedure when \texttt{(sine a)} is evaluated?
+
+\textcolor{answer}{
+  Each recursive call reduces the problem size in one that is three times more simple. For that reason the number of procedure calls is $\log_3(angle)$, therefor the order of growth in \textit{space} is $\textrm O(\log_3(n))$. The order of growth of the number of steps is the number of times the procedure \texttt{p} is called (The steps \texttt{p} computes are $\textrm O(1)$), so the \textit{number of steps} are $\textrm O(\log_3(n))$.}
+\end{itemize}
+
+\subsection*{Exercise 1.16}
+Design a procedure that evolves an iterative exponentiation process that uses successive squaring and uses a logarithmic number of steps, as does \texttt{fast-expt}. (Hint: Using the observation that $(b^{n/2})^2 = (b^2)^{n/2}$, keep, along with the exponent $n$ and the base $b$, an additional state variable $a$, and define the state transformation in such a way that the product $ab^n$ is unchanged from state to state. At the beginning of the process $a$ is taken to be 1, and the answer is given by the value of $a$ at the end of the process. In general, the technique of defining an \textit{invariant} quantity that remains unchanged from state to state is a powerful way to think about the design of iterative algorithms.)
+
+\textcolor{answer}{
+Using \textit{successive squaring} means that rather than computing $b^8$ with 8 multiplications ($b^8=b\times b\times b\times b\times b\times b\times b\times b$), we can compute it as three multiplications $b^2=b\times b$, $b^4=b^2\times b^2$ and $b^8=b^4\times b^4$. The procedure \texttt{fast-expt} describes a recursive process that grows with $\Theta(\log_2(n))$ in steps and space:
+}
+
+\lstinputlisting{scm/ch1/Exercise1.16a.scm}
+
+\textcolor{answer}{
+  Using the hint of the exercise, two procedures are written, the first one is my first attempt to solving the problem.
+}
+
+\lstinputlisting{scm/ch1/Exercise1.16b.scm}
+
+\subsection*{Exercise 1.17}
+The exponentiation algorithms in this section are based on performing exponentiation by means of repeated multiplication. In a similar way, one can perform integer multiplication by means of repeated addition. The following multiplication procedure (in which it is assumed that our language can only add, not multiply) is analogous to the expt procedure:
+%\textcolor{answer}{}
+\lstinputlisting{scm/ch1/Exercise1.17a.scm}
+
+This algorithm takes a number of steps that is linear in \texttt{b}. Now suppose we include, together with addition, operations \texttt{double}, which doubles an integer, and \texttt{halve}, which divides an (even) integer by 2. Using these, design a multiplication procedure analogous to \texttt{fast-expt} that uses a logarithmic number of steps.
+
+\lstinputlisting{scm/ch1/Exercise1.17b.scm}
+
+\subsection*{Exercise 1.18}
+Using the results of Exercise 1.16 and Exercise 1.17, devise a procedure that generates an iterative process for multiplying two integers in terms of adding, doubling, and halving and uses a logarithmic number of steps.
+%\textcolor{answer}{}
+\lstinputlisting{scm/ch1/Exercise1.18.scm}
+
+\subsection*{Exercise 1.19}
+There is a clever algorithm for computing the Fibonacci numbers in a logarithmic number of steps. Recall the transformation of the state variables $a$ and $b$ in the \texttt{fib-iter} process of Section 1.2.2: $a \leftarrow a+b$ and $b \leftarrow a$. Call this transformation $T$, and observe that applying $T$ over and over again n times, starting with 1 and 0, produces the pair $Fib(n + 1)$ and $Fib(n)$. In other words, the Fibonacci numbers are produced by applying $T^n$, the $n^{th}$ power of the transformation $T$, starting with the pair $(1, 0)$. Now consider $T$ to be the special case of $p = 0$ and $q = 1$ in a family of transformations $T_{pq}$, where $T_{pq}$ transforms the pair $( a, b )$ according to $a \leftarrow bq + aq + ap$ and $b \leftarrow bp + aq$. Show that if we apply such a transformation $T_{pq}$ twice, the effect is the same as using a single transformation $T_{p'q'}$ of the same form, and compute $p'$ and $q'$ in terms of $p$ and $q$. This gives us an explicit way to square these transformations, and thus we can compute $T^n$ using successive squaring, as in the \texttt{fast-expt} procedure. Put this all together to complete the following procedure, which runs in a logarithmic number of steps:
+
+\lstinputlisting{scm/ch1/Exercise1.19a.scm}
+
+\textcolor{answer}{
+  $T_{pq}^2=T_{pq}(bq+aq+ap, bp+aq)$
+}
+
+\bigskip
+
+\textcolor{answer}{
+  $T_{pq}^2=T_{p'q'}=(b(q^2+2pq)+a(q^2+2pq)+a(p^2+q^2),b(p^2+q^2)+a(q^2+2pq))=(bq'+aq'+ap, bp'+aq')$
+}
+
+\textcolor{answer}{
+  Where $p' = p^2+q^2$ and $q'=q^2+2pq$
+}
+
+\lstinputlisting{scm/ch1/Exercise1.19b.scm}
+
+\subsection*{Exercise 1.20}
+
+\lstinputlisting{scm/ch1/Exercise1.20.scm}
+
+The process that a procedure generates is of course dependent on the rules used by the interpreter. As an example, consider the iterative gcd procedure given above. Suppose we were to interpret this procedure using normal-order evaluation, as discussed in Section 1.1.5. (The normal-order-evaluation rule for if is described in Exercise 1.5.) Using the substitution method (for normal order), illustrate the process generated in evaluating (gcd 206 40) and indicate the remainder operations that are actually performed. How many remainder operations are actually performed in the normal-order evaluation of (gcd 206 40) ? In the applicative-order evaluation?
+
+%\textcolor{answer}{}
+%\lstinputlisting{scm/ch1/Exercise1.03.scm}
+
+\subsection*{Exercise 1.21}
+%\textcolor{answer}{}
+%\lstinputlisting{scm/ch1/Exercise1.03.scm}
+
+\subsection*{Exercise 1.22}
+%\textcolor{answer}{}
+%\lstinputlisting{scm/ch1/Exercise1.03.scm}
+
+\subsection*{Exercise 1.23}
+%\textcolor{answer}{}
+%\lstinputlisting{scm/ch1/Exercise1.03.scm}
+
+\subsection*{Exercise 1.24}
+%\textcolor{answer}{}
+%\lstinputlisting{scm/ch1/Exercise1.03.scm}
+
+\subsection*{Exercise 1.25}
+%\textcolor{answer}{}
+%\lstinputlisting{scm/ch1/Exercise1.03.scm}
+
+\subsection*{Exercise 1.26}
+%\textcolor{answer}{}
+%\lstinputlisting{scm/ch1/Exercise1.03.scm}
+
+\subsection*{Exercise 1.27}
+%\textcolor{answer}{}
+%\lstinputlisting{scm/ch1/Exercise1.03.scm}
+
+\subsection*{Exercise 1.28}
+%\textcolor{answer}{}
+%\lstinputlisting{scm/ch1/Exercise1.03.scm}
+
+\subsection*{Exercise 1.29}
+%\textcolor{answer}{}
+%\lstinputlisting{scm/ch1/Exercise1.03.scm}
+
+\subsection*{Exercise 1.30}
+%\textcolor{answer}{}
+%\lstinputlisting{scm/ch1/Exercise1.03.scm}
+
+\subsection*{Exercise 1.31}
+%\textcolor{answer}{}
+%\lstinputlisting{scm/ch1/Exercise1.03.scm}
+
+\subsection*{Exercise 1.32}
+%\textcolor{answer}{}
+%\lstinputlisting{scm/ch1/Exercise1.03.scm}
+
+\subsection*{Exercise 1.33}
+%\textcolor{answer}{}
+%\lstinputlisting{scm/ch1/Exercise1.03.scm}
+
+\subsection*{Exercise 1.34}
+%\textcolor{answer}{}
+%\lstinputlisting{scm/ch1/Exercise1.03.scm}
+
+\subsection*{Exercise 1.35}
+%\textcolor{answer}{}
+%\lstinputlisting{scm/ch1/Exercise1.03.scm}
+
+\subsection*{Exercise 1.36}
+%\textcolor{answer}{}
+%\lstinputlisting{scm/ch1/Exercise1.03.scm}
+
+\subsection*{Exercise 1.37}
+%\textcolor{answer}{}
+%\lstinputlisting{scm/ch1/Exercise1.03.scm}
+
+\subsection*{Exercise 1.38}
+%\textcolor{answer}{}
+%\lstinputlisting{scm/ch1/Exercise1.03.scm}
+
+\subsection*{Exercise 1.39}
+%\textcolor{answer}{}
+%\lstinputlisting{scm/ch1/Exercise1.03.scm}
+
+\subsection*{Exercise 1.40}
+%\textcolor{answer}{}
+%\lstinputlisting{scm/ch1/Exercise1.03.scm}
+
+\subsection*{Exercise 1.41}
+%\textcolor{answer}{}
+%\lstinputlisting{scm/ch1/Exercise1.03.scm}
+
+\subsection*{Exercise 1.42}
+%\textcolor{answer}{}
+%\lstinputlisting{scm/ch1/Exercise1.03.scm}
+
+\subsection*{Exercise 1.43}
+%\textcolor{answer}{}
+%\lstinputlisting{scm/ch1/Exercise1.03.scm}
+
+\subsection*{Exercise 1.44}
+%\textcolor{answer}{}
+%\lstinputlisting{scm/ch1/Exercise1.03.scm}
+
+\subsection*{Exercise 1.45}
+%\textcolor{answer}{}
+%\lstinputlisting{scm/ch1/Exercise1.03.scm}
+
+\subsection*{Exercise 1.46}
+%\textcolor{answer}{}
+%\lstinputlisting{scm/ch1/Exercise1.03.scm}
+
+\subsection*{Interesting explorations: Constructing the $Fib(n)$ closed formula}
+
+\end{document}
